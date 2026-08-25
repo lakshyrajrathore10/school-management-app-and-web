@@ -1,0 +1,210 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "School Staff Attendance API",
+    "version": "1.0.0",
+    "description": "Production-ready backend API documentation for SchoolStaffAttendance application."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Login staff user",
+        "tags": ["Auth"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "employeeId": { "type": "string", "example": "EMP001" },
+                  "password": { "type": "string", "example": "password123" }
+                },
+                "required": ["employeeId", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "tags": ["Auth"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": { "type": "string" }
+                },
+                "required": ["refreshToken"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Token refreshed" }
+        }
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "summary": "Get combined staff dashboard data",
+        "tags": ["Dashboard"],
+        "responses": {
+          "200": { "description": "Dashboard metrics retrieved" }
+        }
+      }
+    },
+    "/attendance/today": {
+      "get": {
+        "summary": "Get today's attendance status",
+        "tags": ["Attendance"],
+        "responses": {
+          "200": { "description": "Today status retrieved" }
+        }
+      }
+    },
+    "/attendance/check-in": {
+      "post": {
+        "summary": "Execute Check-In with GPS geofencing & selfie",
+        "tags": ["Attendance"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "latitude": { "type": "number", "example": 22.719568 },
+                  "longitude": { "type": "number", "example": 75.857727 },
+                  "accuracy": { "type": "number", "example": 12.5 },
+                  "timestamp": { "type": "string" },
+                  "selfieBase64": { "type": "string" },
+                  "deviceInfo": { "type": "object" }
+                },
+                "required": ["latitude", "longitude"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Check-in successful" },
+          "400": { "description": "Outside geofence or low accuracy" },
+          "409": { "description": "Already checked in" }
+        }
+      }
+    },
+    "/attendance/check-out": {
+      "post": {
+        "summary": "Execute Check-Out with GPS geofencing & selfie",
+        "tags": ["Attendance"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "latitude": { "type": "number", "example": 22.719568 },
+                  "longitude": { "type": "number", "example": 75.857727 },
+                  "accuracy": { "type": "number", "example": 12.5 },
+                  "selfieBase64": { "type": "string" }
+                },
+                "required": ["latitude", "longitude"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Check-out successful" }
+        }
+      }
+    },
+    "/attendance/history": {
+      "get": {
+        "summary": "Get paginated attendance history",
+        "tags": ["Attendance"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "History retrieved" }
+        }
+      }
+    },
+    "/leaves": {
+      "get": {
+        "summary": "List user leave applications",
+        "tags": ["Leaves"],
+        "responses": { "200": { "description": "Leaves list retrieved" } }
+      },
+      "post": {
+        "summary": "Apply for leave",
+        "tags": ["Leaves"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "example": "Casual Leave" },
+                  "startDate": { "type": "string", "example": "2026-08-10" },
+                  "endDate": { "type": "string", "example": "2026-08-10" },
+                  "reason": { "type": "string", "example": "Personal work" }
+                },
+                "required": ["type", "startDate", "endDate", "reason"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Leave applied" } }
+      }
+    },
+    "/holidays": {
+      "get": {
+        "summary": "Get holiday calendar",
+        "tags": ["Holidays"],
+        "responses": { "200": { "description": "Holidays list retrieved" } }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "summary": "List staff notifications",
+        "tags": ["Notifications"],
+        "responses": { "200": { "description": "Notifications retrieved" } }
+      }
+    }
+  }
+}

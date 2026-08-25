@@ -1,0 +1,465 @@
+School Staff Attendance Mobile App
+Software Requirement Document (SRD)
+Version: 1.0 (MVP)
+ Platform: Android (React Native)
+
+1. Project Overview
+Project Name
+School Staff Attendance Mobile App
+Purpose
+The School Staff Attendance Mobile App is designed exclusively for school employees to mark their daily attendance using GPS Location Verification and a Live Selfie Capture.
+The application aims to eliminate proxy attendance and ensure that staff can mark attendance only while physically present within the school campus.
+Note: This application is only for staff members. All employee accounts are created and managed by the School Admin through the Admin Portal. Staff cannot register themselves.
+
+2. Target Users
+Teachers
+Principal (optional mobile access)
+Office Staff
+Accountant
+Reception Staff
+Lab Staff
+Security Guard
+Peon
+Bus Staff (Optional)
+
+3. Authentication
+Login
+Staff can login using credentials provided by the School Administration.
+Login Fields
+Employee ID
+Password
+Authentication Flow
+Open App
+Enter Employee ID
+Enter Password
+Click Login
+Validate Credentials
+Save Secure Session
+Redirect to Dashboard
+
+Registration
+Not Available
+No Signup Screen
+No Self Registration
+No OTP Registration
+Only the Admin creates staff accounts.
+
+Forgot Password
+Password reset is controlled by the School Administration.
+If a staff member forgets the password:
+Contact School Admin
+Admin resets password
+New password is shared securely
+
+4. Application Flow
+Splash Screen
+      │
+      ▼
+Login
+      │
+      ▼
+Dashboard
+      │
+ ┌────┴──────────────┐
+ │                   │
+Attendance      Attendance History
+ │                   │
+Leave         Notifications
+ │                   │
+Holiday        Profile
+
+5. Screens
+5.1 Splash Screen
+Purpose
+Display App Logo
+Display School Logo
+Check Login Session
+Actions
+If Logged In
+→ Dashboard
+Else
+→ Login Screen
+
+5.2 Login Screen
+UI Components
+Employee ID
+Password
+Login Button
+Version Number
+
+Validation
+Employee ID Required
+Password Required
+Internet Required
+
+5.3 Dashboard
+Information
+Welcome Message
+Current Date
+Current Time
+School Name
+Today's Attendance Status
+Check-In Time
+Check-Out Time
+Working Hours
+Attendance Status
+
+Quick Actions
+Check In
+Check Out
+Attendance History
+Leave
+Holiday Calendar
+Notifications
+Profile
+
+6. Attendance Module
+This is the core feature of the application.
+
+─────────────────────────────────────────
+6.1 Daily Attendance State Machine
+─────────────────────────────────────────
+
+Each staff member follows a strict daily state transition:
+
+  NOT_CHECKED_IN
+       │
+       ▼ (staff taps Check In + all validations pass)
+  CHECKED_IN
+       │
+       ▼ (staff taps Check Out + all validations pass)
+  CHECKED_OUT (final state for the day)
+
+State Rules:
+- NOT_CHECKED_IN  → Show "Check In" primary action button
+- CHECKED_IN      → Show live elapsed shift timer + "Check Out" button
+- CHECKED_OUT     → Show "Attendance Completed Today" badge (no further actions)
+- Status resets to NOT_CHECKED_IN every day at midnight
+
+─────────────────────────────────────────
+6.2 Pre-Flight Diagnostics (Before Any Action)
+─────────────────────────────────────────
+
+Before Check-In or Check-Out is allowed, the app performs 4 mandatory checks:
+
+  CHECK 1: Internet Connectivity
+  - Uses @react-native-community/netinfo
+  - If unavailable → Block attendance, show error
+
+  CHECK 2: GPS / Location Services Enabled
+  - Checks if device location is turned ON (system-level)
+  - If disabled → Show "Enable GPS" action with deep link to device settings
+
+  CHECK 3: Camera Permission
+  - Checks CAMERA permission status
+  - If denied → Show "Open App Settings" button for manual grant
+
+  CHECK 4: Location Permission
+  - Checks ACCESS_FINE_LOCATION (Android) / NSLocationWhenInUseUsageDescription (iOS)
+  - If denied → Request permission, show rationale dialog
+
+All 4 checks must pass before proceeding.
+
+─────────────────────────────────────────
+6.3 GPS Location Fetching
+─────────────────────────────────────────
+
+Once pre-flight checks pass, a fresh GPS fix is obtained:
+
+  Config:
+  - enableHighAccuracy: true
+  - timeout: 15000ms (15 seconds)
+  - maximumAge: 30000ms (reject cached fixes older than 30 seconds)
+  - Accuracy threshold: Fixes with accuracy > 50 meters are rejected
+
+  Output:
+  - latitude (decimal degrees)
+  - longitude (decimal degrees)
+  - accuracy (meters)
+  - timestamp (Unix epoch ms)
+  - isMockLocation: boolean
+
+─────────────────────────────────────────
+6.4 Anti-Spoofing & Fake GPS Detection
+─────────────────────────────────────────
+
+Before geofence validation, the system checks for GPS spoofing:
+
+  Android:
+  - Reads Location.isFromMockProvider flag
+  - Checks if developer options "Allow Mock Locations" is active
+
+  iOS:
+  - Detects isSimulatedLocation flag
+  - Flags locations from known simulator coordinates
+
+  If mock location is detected:
+  - Attendance is HARD BLOCKED
+  - User sees "Fake GPS Detected" error screen
+  - Event is logged server-side for admin audit
+
+─────────────────────────────────────────
+6.5 Geofence Validation
+─────────────────────────────────────────
+
+After fetching a valid GPS fix, the distance to the school campus center is
+calculated using the Haversine Geodesic Formula:
+
+  distance = 2 × R × arcsin(√(sin²(Δφ/2) + cos(φ1)·cos(φ2)·sin²(Δλ/2)))
+
+  where:
+  - φ = latitude in radians
+  - λ = longitude in radians
+  - R = 6371000 meters (Earth radius)
+
+  School anchor coordinates (Lat, Lon) are fetched dynamically from backend
+  API on each session start and cached locally for 24 hours.
+
+  Validation Logic:
+  - distance <= schoolRadius (e.g. 150 meters) → INSIDE GEOFENCE (allow)
+  - distance > schoolRadius → OUTSIDE GEOFENCE (block with distance message)
+
+  The UI shows real-time live distance and a visual green/red indicator.
+
+─────────────────────────────────────────
+6.6 Check-In Full Flow
+─────────────────────────────────────────
+
+Step 1  User taps "Check In" on Dashboard or Attendance Home
+
+Step 2  Pre-Flight Diagnostics run
+        Internet ✓ | GPS ✓ | Camera ✓ | Location Permission ✓
+
+Step 3  Fresh GPS coordinates fetched
+        (accuracy < 50m, age < 30s, not mock)
+
+Step 4  Fake GPS check performed
+        Blocked if mock location detected
+
+Step 5  Haversine distance calculated
+        Employee must be within school geofence radius
+
+Step 6  Front Camera opens automatically
+        Gallery selection is disabled
+        Face alignment oval overlay is shown
+
+Step 7  Employee captures a Live Selfie
+        Photo is displayed in preview screen with:
+        - Location watermark (School Name, Lat, Lon)
+        - Date & Time overlay
+        - Employee Name & ID overlay
+
+Step 8  Employee taps "Confirm Check In"
+
+Step 9  App submits multipart payload to server:
+        - Employee ID
+        - Attendance Type: check_in
+        - Latitude
+        - Longitude
+        - GPS Accuracy
+        - Device Timestamp
+        - Device ID / UUID
+        - App Version
+        - Selfie Image (JPEG compressed)
+
+Step 10 Server validates payload and returns confirmation
+
+Step 11 Daily state transitions to CHECKED_IN
+        Success screen shown with check-in timestamp
+        Late flag shown if check-in time exceeds grace period
+
+─────────────────────────────────────────
+6.7 Check-Out Full Flow
+─────────────────────────────────────────
+
+Identical to Check-In flow with following differences:
+- Attendance Type: check_out
+- State transitions from CHECKED_IN → CHECKED_OUT
+- Success screen shows: Check-In Time | Check-Out Time | Total Working Hours
+- Early check-out flag is applied if check-out is before shift end time
+
+─────────────────────────────────────────
+6.8 Late / Early Flags
+─────────────────────────────────────────
+
+  Late Check-In:
+  - Flag applied if check-in time > school start time + grace period
+  - Example: If school starts at 9:00 AM and grace period is 15 minutes,
+    any check-in after 9:15 AM is marked LATE
+
+  Early Check-Out:
+  - Flag applied if check-out time < minimum shift end time
+  - Example: If minimum shift is 6 hours, leaving before minimum hours is flagged
+
+  These flags are stored server-side and visible in Attendance History.
+
+7. Attendance Validation Rules
+Attendance will be accepted only when:
+Internet is Available
+GPS is Enabled (system-level)
+GPS accuracy is <= 50 meters
+GPS fix is not older than 30 seconds
+Mock / Fake GPS is NOT detected
+Camera Permission is Granted
+Location Permission is Granted
+Employee is inside School Geofence Radius
+Live Selfie is Captured (gallery upload blocked)
+Daily state allows the action (not already checked out)
+Serverside timestamp validation passes
+Otherwise attendance will be rejected with a specific user-friendly error message.
+
+Error Scenarios & Messages:
+  OUTSIDE_GEOFENCE      → "You are X meters away from school. Please be within Y meters."
+  MOCK_GPS_DETECTED     → "Fake GPS detected. Attendance cannot be marked."
+  NO_INTERNET           → "No internet connection. Please connect and try again."
+  GPS_DISABLED          → "GPS is disabled. Please enable location services."
+  LOW_ACCURACY          → "GPS accuracy is too low. Move to an open area and retry."
+  CAMERA_DENIED         → "Camera access required. Please grant permission in settings."
+  ALREADY_CHECKED_IN    → "You have already checked in today."
+  ALREADY_CHECKED_OUT   → "You have already completed attendance for today."
+  SERVER_ERROR          → "Server error. Please try again in a moment."
+
+8. Attendance History
+Staff can view attendance records.
+Filters
+Today
+Weekly
+Monthly
+
+Record Details
+Date
+Check-In Time
+Check-Out Time
+Working Hours
+Attendance Status
+Late Status
+
+9. Leave Module
+Staff can apply leave.
+Fields
+Leave Type
+Start Date
+End Date
+Reason
+Attachment (Optional)
+
+Leave Status
+Pending
+Approved
+Rejected
+
+10. Holiday Calendar
+Displays
+National Holidays
+School Holidays
+Festival Holidays
+Vacation
+
+11. Notifications
+Displays
+Attendance Reminder
+Meeting Notice
+Holiday Notice
+Leave Approval
+General Circular
+
+12. Profile
+Displays
+Employee Name
+Employee ID
+Department
+Designation
+Mobile Number
+School Name
+
+Options
+Logout
+
+13. Permissions Required
+Camera
+Location
+Internet
+Notifications
+
+14. Security Features
+GPS Validation
+Attendance only inside school radius.
+
+Live Selfie
+Mandatory.
+Gallery Upload Disabled.
+
+Fake GPS Detection
+Attendance blocked if mock location is detected.
+
+Secure Login
+JWT Authentication
+Secure Session Storage
+HTTPS APIs
+
+15. Offline Behaviour
+The application requires an active internet connection for attendance marking.
+Offline attendance is not supported in Version 1.0.
+
+16. Error Handling
+Examples:
+Internet unavailable
+GPS disabled
+Camera permission denied
+Outside school radius
+Invalid credentials
+Attendance already marked
+Server unavailable
+Each error should show a clear and user-friendly message.
+
+17. Technical Stack
+Mobile Framework
+React Native
+TypeScript
+State Management
+Redux Toolkit
+API Management
+TanStack Query
+Axios
+Local Storage
+MMKV
+Camera
+React Native Vision Camera
+Maps & Location
+Google Maps SDK
+Google Geolocation API
+Push Notifications
+Firebase Cloud Messaging (FCM)
+
+18. MVP Scope
+Included
+Splash Screen
+Login
+Dashboard
+Check-In
+Check-Out
+GPS Verification
+Live Selfie Capture
+Attendance History
+Leave Application
+Holiday Calendar
+Notifications
+Profile
+Logout
+Not Included (Future Versions)
+Face Recognition
+Liveness Detection
+Offline Attendance
+QR Code Attendance
+Shift Management
+Payroll Integration
+Multi-School Switching
+AI-based Attendance Verification
+
+19. Success Criteria
+The application will be considered successful when:
+Staff can securely log in using admin-provided credentials.
+Attendance can only be marked from within the configured school geofence.
+Every attendance record includes a live selfie and GPS location.
+Attendance history and leave information are easily accessible.
+The app provides a simple, fast, and reliable experience for daily school staff attendance.

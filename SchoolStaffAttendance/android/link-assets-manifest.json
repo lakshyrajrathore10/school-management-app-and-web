@@ -1,0 +1,29 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "src/assets/fonts/Parkinsans-Bold.ttf",
+      "sha1": "7abcda778f9360cff5b35b378c29211c547af94c"
+    },
+    {
+      "path": "src/assets/fonts/Parkinsans-ExtraBold.ttf",
+      "sha1": "ef56d874da3b8e87f7b7f0c78c27613bbfb0eaeb"
+    },
+    {
+      "path": "src/assets/fonts/Parkinsans-Light.ttf",
+      "sha1": "0d881c2d9144c109c47cb83ffac37a7d938b7f92"
+    },
+    {
+      "path": "src/assets/fonts/Parkinsans-Medium.ttf",
+      "sha1": "aa8c769ea16a15774fad82238ceeb79683d53916"
+    },
+    {
+      "path": "src/assets/fonts/Parkinsans-Regular.ttf",
+      "sha1": "ffac61b6d279148c8c55da5d48211b2859b1e34c"
+    },
+    {
+      "path": "src/assets/fonts/Parkinsans-SemiBold.ttf",
+      "sha1": "2799b4baed8802d6f99d1c6ca911c986ad1d37d4"
+    }
+  ]
+}

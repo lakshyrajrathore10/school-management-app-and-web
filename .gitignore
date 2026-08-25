@@ -1,0 +1,50 @@
+# OS
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build Artifacts
+dist/
+**/dist/
+build/
+**/build/
+DerivedData/
+**/*.ipa
+**/*.jsbundle
+
+# Android & Gradle
+.gradle/
+**/.gradle/
+**/local.properties
+**/*.keystore
+!**/debug.keystore
+
+# Logs
+*.log
+**/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.idea/
+**/.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep

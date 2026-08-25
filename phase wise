@@ -1,0 +1,657 @@
+School Staff Attendance Mobile App
+Frontend Development Roadmap (React Native)
+
+Goal: Build the complete React Native Mobile App (Frontend Only) in well-defined phases, ensuring every module is independently testable and production-ready before moving to the next.
+
+Phase 1 – Project Foundation
+Objective
+
+Set up the project architecture and development environment.
+
+Tasks
+Create React Native project
+Configure TypeScript
+Configure ESLint & Prettier
+Folder structure setup
+Theme system (Light Theme)
+Color palette
+Typography
+Responsive scaling utilities
+SVG support
+Image assets
+App icons
+Splash screen setup
+Environment configuration
+API service structure (placeholder)
+Axios instance
+Redux Toolkit setup
+React Query setup
+MMKV storage setup
+React Navigation setup
+Reusable Components folder
+Deliverables
+Production-ready project architecture
+Navigation working
+Theme system ready
+State management configured
+
+
+Phase 2 – Authentication Module
+Objective
+
+Develop secure login flow for staff.
+
+Screens
+Splash Screen
+Login Screen
+Features
+Employee ID input
+Password input
+Password visibility toggle
+Form validation
+Loading state
+Error handling
+Session storage
+Auto Login
+Logout
+Components
+Custom Button
+Input Field
+Loader
+Error Snackbar
+Deliverables
+Complete Authentication UI
+Login Flow
+Token Storage
+Session Handling
+Phase 3 – Dashboard
+Objective
+
+Create the main dashboard after login.
+
+Sections
+Welcome Card
+Current Date
+Current Time
+School Information
+Attendance Status
+Check In Card
+Check Out Card
+Working Hours
+Quick Actions
+Quick Navigation
+Attendance
+Attendance History
+Leave
+Notifications
+Holiday
+Profile
+Deliverables
+Dashboard UI
+Navigation Working
+Phase 4 – Attendance Module
+Objective
+
+Build the complete production-grade attendance workflow (Check-In & Check-Out)
+with GPS geofencing, anti-spoofing, live selfie capture, and daily state machine.
+
+─────────────────────────────────────────
+4.1 Location Service (locationService.ts)
+─────────────────────────────────────────
+
+Tasks
+
+  GPS Fetching
+  - getCurrentPosition() with enableHighAccuracy: true
+  - timeout: 15000ms, maximumAge: 30000ms
+  - Reject fix if accuracy > 50 meters
+  - Return: latitude, longitude, accuracy, timestamp
+
+  Haversine Distance Calculator
+  - calculateDistance(lat1, lon1, lat2, lon2): number
+  - Result in meters, uses Earth radius 6371000m
+  - Used to compare distance with school geofence radius
+
+  Mock / Fake GPS Detection
+  - Android: check Location.isFromMockProvider flag
+  - iOS: check isSimulatedLocation flag
+  - Return isMockLocation: boolean
+
+  Location Permission Handler
+  - checkLocationPermission(): 'granted' | 'denied' | 'never_ask_again'
+  - requestLocationPermission()
+  - openDeviceLocationSettings() (deep link)
+
+  School Coordinates Caching
+  - Fetch school anchor (lat, lon, radius) from backend API on session start
+  - Cache locally with MMKV for 24 hours
+  - Use cached value if network is unavailable
+
+─────────────────────────────────────────
+4.2 Attendance Redux State (attendanceSlice.ts)
+─────────────────────────────────────────
+
+Tasks
+
+  Daily State Machine
+  - todayStatus: 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'CHECKED_OUT'
+  - Reset to NOT_CHECKED_IN at midnight (via app focus listener)
+
+  Location State
+  - currentLat, currentLon, currentAccuracy
+  - isInsideGeofence: boolean
+  - geofenceDistanceMeters: number
+  - isMockLocationDetected: boolean
+
+  Attendance Records
+  - checkInTime: string | null
+  - checkOutTime: string | null
+  - workingHours: string | null
+  - isLateCheckIn: boolean
+  - isEarlyCheckOut: boolean
+
+  Loading / Error States
+  - loading: boolean
+  - error: string | null
+
+─────────────────────────────────────────
+4.3 Attendance API Service (attendanceService.ts)
+─────────────────────────────────────────
+
+Tasks
+
+  fetchTodayStatus(employeeId)
+  - Fetches current daily check-in/out status from server
+  - Called on app foreground, dashboard mount
+
+  submitAttendance(payload)
+  - Multipart upload: selfie image + JSON fields
+  - Fields: employeeId, type, latitude, longitude, accuracy,
+    deviceTimestamp, deviceId, appVersion
+  - Returns: status, checkInTime / checkOutTime, workingHours, lateFlag
+
+  fetchSchoolConfig()
+  - Returns: schoolName, anchorLat, anchorLon, geofenceRadius,
+    shiftStartTime, shiftEndTime, graceMinutes
+
+─────────────────────────────────────────
+4.4 Pre-Flight Permission & Status Checks
+─────────────────────────────────────────
+
+Tasks
+
+  checkInternetConnectivity()
+  - Uses @react-native-community/netinfo
+  - Returns: isConnected: boolean
+
+  checkGPSEnabled()
+  - Checks system-level GPS service status
+  - Returns: isEnabled: boolean
+
+  checkCameraPermission()
+  - Returns: 'granted' | 'denied' | 'never_ask_again'
+
+  checkLocationPermission()
+  - Returns: 'granted' | 'denied' | 'never_ask_again'
+
+  All 4 checks run in parallel before any attendance action
+  UI shows real-time status card for each check
+
+─────────────────────────────────────────
+4.5 Screens
+─────────────────────────────────────────
+
+  AttendanceHomeScreen
+  - 4-card pre-flight status display (Internet, GPS, Camera, Location)
+  - Real-time GPS distance to school with live green/red indicator
+  - Dynamic type selector: Check-In | Check-Out (based on daily state)
+  - Proceed button disabled if any check fails
+  - "Attendance Completed Today" state when fully done
+
+  AttendanceCameraScreen
+  - Real front camera using react-native-vision-camera
+  - Gallery picker completely disabled (takePhoto only)
+  - Face alignment oval overlay
+  - Flash toggle
+  - Auto-capture option hint
+
+  AttendancePreviewScreen
+  - Captured selfie full preview
+  - Watermark overlay: School Name | Date & Time | Lat/Lon
+  - Confirm button triggers API submission with loading overlay
+  - Retake button goes back to camera
+
+  AttendanceSuccessScreen
+  - Animated green tick (Lottie or native animation)
+  - Check-In Time displayed (or Check-Out Time)
+  - Total Working Hours displayed (for check-out)
+  - Late flag badge shown if applicable
+  - Back to Dashboard button
+
+  AttendanceFailedScreen
+  - Error type enum displayed with specific message:
+    OUTSIDE_GEOFENCE | MOCK_GPS | NO_INTERNET | LOW_ACCURACY
+    CAMERA_DENIED | ALREADY_DONE | SERVER_ERROR
+  - Contextual action buttons:
+    "Enable GPS" | "Open Settings" | "Retry" | "Back"
+
+─────────────────────────────────────────
+4.6 Components
+─────────────────────────────────────────
+
+  PermissionStatusCard
+  - Single card component showing icon, label, and status
+  - States: checking | passed | failed | requesting
+
+  GeofenceStatusBadge
+  - Shows real-time distance with green (inside) / red (outside) color
+  - Animated pulse dot when inside geofence
+
+  CameraPreview
+  - Vision Camera device component with front camera preset
+  - Face oval overlay, corner markers
+
+  CaptureButton
+  - Large shutter outer ring + inner fill circle
+  - Disabled state when location not verified
+
+  SelfiePreviewCard
+  - Full image with watermark overlay
+  - Date, time, GPS coords, school name
+
+  LoadingOverlay
+  - Full-screen overlay with spinner during API submission
+
+  SuccessAnimation
+  - Animated green checkmark on success screen
+
+─────────────────────────────────────────
+4.7 Edge Cases & Error Handling
+─────────────────────────────────────────
+
+  GPS accuracy degrades mid-flow
+  - Re-fetch location before submission
+
+  Network drops during selfie upload
+  - Show retry option, do NOT auto-submit without user action
+
+  Mock location toggled mid-flow
+  - Detect on submission, hard block with error
+
+  Already checked in (server conflict)
+  - Handle 409 from server, show ALREADY_CHECKED_IN screen
+
+  User kills app mid-flow
+  - State is not committed until server returns success
+  - No partial/orphaned records created
+
+Deliverables
+Complete production-ready Attendance UI and logic
+locationService.ts with GPS, geofencing, mock detection
+attendanceService.ts with API integration methods
+attendanceSlice.ts with daily state machine
+All 5 screens functional with proper error & success flows
+All permission pre-flight checks operational
+Phase 5 – Attendance History
+Objective
+
+Allow staff to view previous attendance.
+
+Screens
+
+Attendance History
+
+Attendance Details
+
+Filters
+
+Today
+
+Weekly
+
+Monthly
+
+Custom Date
+
+Card Details
+
+Date
+
+Check In
+
+Check Out
+
+Working Hours
+
+Status
+
+Late
+
+Deliverables
+
+History Module Complete
+
+Phase 6 – Leave Management
+Objective
+
+Develop leave request system.
+
+Screens
+
+Leave List
+
+Apply Leave
+
+Leave Details
+
+Features
+
+Leave Type
+
+Date Picker
+
+Reason
+
+Attachment
+
+Submit Leave
+
+Status
+
+Deliverables
+
+Leave Module Complete
+
+Phase 7 – Holiday Module
+Objective
+
+Display school holiday calendar.
+
+Screens
+
+Holiday List
+
+Holiday Details
+
+Features
+
+Holiday Cards
+
+Festival
+
+Vacation
+
+Government Holiday
+
+Deliverables
+
+Holiday Module Ready
+
+Phase 8 – Notifications Module
+Objective
+
+Display announcements and reminders.
+
+Screens
+
+Notification List
+
+Notification Details
+
+Features
+
+Unread Badge
+
+Read Status
+
+Delete Notification
+
+Refresh
+
+Deliverables
+
+Notification Module Ready
+
+Phase 9 – Profile Module
+Objective
+
+Develop employee profile section.
+
+Screens
+
+Profile
+
+About App
+
+Features
+
+Employee Details
+
+School Information
+
+Version
+
+Logout
+
+Deliverables
+
+Profile Module Complete
+
+Phase 10 – Common Components & Polish
+Objective
+
+Create reusable UI components and refine the overall experience.
+
+Components
+
+Primary Button
+
+Secondary Button
+
+Input Field
+
+Search Bar
+
+App Header
+
+Bottom Sheet
+
+Confirmation Dialog
+
+Custom Modal
+
+Loader
+
+Empty State
+
+Error State
+
+No Internet Screen
+
+Permission Card
+
+Toast
+
+Snackbar
+
+Skeleton Loader
+
+Shimmer Loader
+
+Deliverables
+
+Complete Design System
+
+Phase 11 – Navigation & State Management
+Objective
+
+Connect all screens and centralize app state.
+
+Navigation
+
+Auth Stack
+
+Main Stack
+
+Drawer (if needed)
+
+Bottom Tabs (if needed)
+
+State
+
+Authentication
+
+Profile
+
+Attendance
+
+Leave
+
+Notification
+
+Settings
+
+Deliverables
+
+Fully Connected App Flow
+
+Phase 12 – API Integration
+Objective
+
+Integrate frontend with backend APIs.
+
+Modules
+
+Authentication
+
+Dashboard
+
+Attendance
+
+Leave
+
+Holiday
+
+Notifications
+
+Profile
+
+Deliverables
+
+All APIs Integrated
+
+Phase 13 – Testing & Optimization
+Objective
+
+Prepare the app for production.
+
+Tasks
+
+UI Testing
+
+Performance Optimization
+
+Permission Testing
+
+Device Compatibility
+
+Responsive Layout Validation
+
+Crash Fixes
+
+Memory Optimization
+
+Image Optimization
+
+Loading Optimization
+
+Error Handling
+
+Deliverables
+
+Production-ready Build
+
+Phase 14 – Release Preparation
+Objective
+
+Generate release-ready application.
+
+Tasks
+
+App Icon
+
+Splash
+
+Versioning
+
+APK Build
+
+AAB Build
+
+Play Store Assets
+
+Privacy Policy
+
+App Signing
+
+Release Notes
+
+Deliverables
+
+Release Candidate
+
+Overall Development Flow
+Phase 1
+Project Setup
+        │
+        ▼
+Phase 2
+Authentication
+        │
+        ▼
+Phase 3
+Dashboard
+        │
+        ▼
+Phase 4
+Attendance Module
+        │
+        ▼
+Phase 5
+Attendance History
+        │
+        ▼
+Phase 6
+Leave Module
+        │
+        ▼
+Phase 7
+Holiday Module
+        │
+        ▼
+Phase 8
+Notifications
+        │
+        ▼
+Phase 9
+Profile
+        │
+        ▼
+Phase 10
+Common Components
+        │
+        ▼
+Phase 11
+Navigation & State
+        │
+        ▼
+Phase 12
+API Integration
+        │
+        ▼
+Phase 13
+Testing & Optimization
+        │
+        ▼
+Phase 14
+Release Build
